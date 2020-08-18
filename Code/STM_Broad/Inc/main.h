@@ -60,6 +60,10 @@ void Error_Handler(void);
 /* Private defines -----------------------------------------------------------*/
 #define BTN_Pin GPIO_PIN_0
 #define BTN_GPIO_Port GPIOC
+#define ENCODER1_A_Pin GPIO_PIN_1
+#define ENCODER1_A_GPIO_Port GPIOA
+#define ENCODER1_B_Pin GPIO_PIN_5
+#define ENCODER1_B_GPIO_Port GPIOA
 /* USER CODE BEGIN Private defines */
 
 /* USER CODE END Private defines */

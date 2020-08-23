@@ -32,7 +32,8 @@ extern "C" {
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
-
+#include "stdio.h"
+#include "stdint.h"
 /* USER CODE END Includes */
 
 /* Exported types ------------------------------------------------------------*/
@@ -50,6 +51,8 @@ extern "C" {
 
 /* USER CODE END EM */
 
+void HAL_TIM_MspPostInit(TIM_HandleTypeDef *htim);
+
 /* Exported functions prototypes ---------------------------------------------*/
 void Error_Handler(void);
 
@@ -64,7 +67,49 @@ void Error_Handler(void);
 #define ENCODER1_A_GPIO_Port GPIOA
 #define ENCODER1_B_Pin GPIO_PIN_5
 #define ENCODER1_B_GPIO_Port GPIOA
+#define ENCODER2_A_Pin GPIO_PIN_6
+#define ENCODER2_A_GPIO_Port GPIOA
+#define ENCODER2_B_Pin GPIO_PIN_7
+#define ENCODER2_B_GPIO_Port GPIOA
+#define LEDR_Pin GPIO_PIN_4
+#define LEDR_GPIO_Port GPIOC
+#define LEDB_Pin GPIO_PIN_5
+#define LEDB_GPIO_Port GPIOC
+#define LEDG_Pin GPIO_PIN_0
+#define LEDG_GPIO_Port GPIOB
+#define ZIGBEE_TX_Pin GPIO_PIN_10
+#define ZIGBEE_TX_GPIO_Port GPIOB
+#define ZIGBEE_RX_Pin GPIO_PIN_11
+#define ZIGBEE_RX_GPIO_Port GPIOB
+#define MOTORL_Pin GPIO_PIN_6
+#define MOTORL_GPIO_Port GPIOC
+#define DOWNL_Pin GPIO_PIN_7
+#define DOWNL_GPIO_Port GPIOC
+#define UPL_Pin GPIO_PIN_8
+#define UPL_GPIO_Port GPIOC
+#define MOTORR_Pin GPIO_PIN_9
+#define MOTORR_GPIO_Port GPIOC
+#define DOWNR_Pin GPIO_PIN_8
+#define DOWNR_GPIO_Port GPIOA
+#define UPR_Pin GPIO_PIN_9
+#define UPR_GPIO_Port GPIOA
+#define SERVO2_Pin GPIO_PIN_10
+#define SERVO2_GPIO_Port GPIOA
+#define SERVO1_Pin GPIO_PIN_11
+#define SERVO1_GPIO_Port GPIOA
+#define CP2102_TX_Pin GPIO_PIN_10
+#define CP2102_TX_GPIO_Port GPIOC
+#define CP2102_RX_Pin GPIO_PIN_11
+#define CP2102_RX_GPIO_Port GPIOC
+#define MPU_SCL_Pin GPIO_PIN_8
+#define MPU_SCL_GPIO_Port GPIOB
+#define MPU_SDA_Pin GPIO_PIN_9
+#define MPU_SDA_GPIO_Port GPIOB
 /* USER CODE BEGIN Private defines */
+
+
+extern char UARTgetchar[1],UARTbuffer[20];
+extern uint8_t newblockdata;
 
 /* USER CODE END Private defines */
 

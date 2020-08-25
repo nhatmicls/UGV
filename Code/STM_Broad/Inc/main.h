@@ -34,6 +34,7 @@ extern "C" {
 /* USER CODE BEGIN Includes */
 #include "stdio.h"
 #include "stdint.h"
+#include "string.h"
 /* USER CODE END Includes */
 
 /* Exported types ------------------------------------------------------------*/
@@ -81,18 +82,18 @@ void Error_Handler(void);
 #define ZIGBEE_TX_GPIO_Port GPIOB
 #define ZIGBEE_RX_Pin GPIO_PIN_11
 #define ZIGBEE_RX_GPIO_Port GPIOB
-#define MOTORL_Pin GPIO_PIN_6
-#define MOTORL_GPIO_Port GPIOC
-#define DOWNL_Pin GPIO_PIN_7
-#define DOWNL_GPIO_Port GPIOC
-#define UPL_Pin GPIO_PIN_8
+#define MOTORL_Pin GPIO_PIN_14
+#define MOTORL_GPIO_Port GPIOB
+#define DOWNL_Pin GPIO_PIN_15
+#define DOWNL_GPIO_Port GPIOB
+#define UPL_Pin GPIO_PIN_6
 #define UPL_GPIO_Port GPIOC
+#define DOWNR_Pin GPIO_PIN_7
+#define DOWNR_GPIO_Port GPIOC
+#define UPR_Pin GPIO_PIN_8
+#define UPR_GPIO_Port GPIOC
 #define MOTORR_Pin GPIO_PIN_9
 #define MOTORR_GPIO_Port GPIOC
-#define DOWNR_Pin GPIO_PIN_8
-#define DOWNR_GPIO_Port GPIOA
-#define UPR_Pin GPIO_PIN_9
-#define UPR_GPIO_Port GPIOA
 #define SERVO2_Pin GPIO_PIN_10
 #define SERVO2_GPIO_Port GPIOA
 #define SERVO1_Pin GPIO_PIN_11

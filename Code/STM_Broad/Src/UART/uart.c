@@ -24,6 +24,7 @@ void getdata()
 			{
 				copystate=HANDLE;
 				UARTlengthcount=0;
+				memset(UARTbuffer,0,strlen(UARTbuffer));
 			}
 			break;
 		case HANDLE:
@@ -35,6 +36,7 @@ void getdata()
 			else if(UARTgetchar=='[')
 			{
 				UARTlengthcount=0;
+				memset(UARTbuffer,0,strlen(UARTbuffer));
 			}
 			else
 				UARTbuffer[UARTlengthcount++]==UARTgetchar[0];

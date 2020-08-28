@@ -1,0 +1,11 @@
+main.c:67:6:HAL_UART_RxCpltCallback	16	static
+main.c:77:6:sys_init	8	static
+main.c:87:6:MotorControlSpeed	16	static
+main.c:126:5:main	32	static
+main.c:192:6:SystemClock_Config	88	static
+main.c:237:13:MX_TIM2_Init	56	static
+main.c:286:13:MX_TIM3_Init	56	static
+main.c:335:13:MX_TIM8_Init	80	static
+main.c:404:13:MX_USART3_UART_Init	8	static
+main.c:437:13:MX_GPIO_Init	48	static
+main.c:497:6:Error_Handler	4	static

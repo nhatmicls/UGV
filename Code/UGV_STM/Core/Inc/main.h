@@ -95,9 +95,15 @@ void Error_Handler(void);
 #define DOWNL_GPIO_Port GPIOA
 #define UPL_Pin GPIO_PIN_9
 #define UPL_GPIO_Port GPIOA
+#define MPU_SCL_Pin GPIO_PIN_8
+#define MPU_SCL_GPIO_Port GPIOB
+#define MPU_SDA_Pin GPIO_PIN_9
+#define MPU_SDA_GPIO_Port GPIOB
 /* USER CODE BEGIN Private defines */
 extern char UARTgetchar[1],UARTbuffer[20];
 extern uint8_t newblockdata;
+
+extern uint32_t globaldata;
 /* USER CODE END Private defines */
 
 #ifdef __cplusplus

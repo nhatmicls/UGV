@@ -32,6 +32,7 @@
 
 /* Private define ------------------------------------------------------------*/
 /* USER CODE BEGIN PD */
+#define maxblock 3
 /* USER CODE END PD */
 
 /* Private macro -------------------------------------------------------------*/
@@ -40,8 +41,11 @@
 /* USER CODE END PM */
 
 /* Private variables ---------------------------------------------------------*/
+I2C_HandleTypeDef hi2c1;
+
 TIM_HandleTypeDef htim2;
 TIM_HandleTypeDef htim3;
+TIM_HandleTypeDef htim7;
 TIM_HandleTypeDef htim8;
 
 UART_HandleTypeDef huart3;
@@ -49,6 +53,16 @@ UART_HandleTypeDef huart3;
 /* USER CODE BEGIN PV */
 char UARTgetchar[1],UARTbuffer[20];
 uint8_t newblockdata=0;
+uint32_t globaldata=0;
+
+uint16_t RightEncoder=0;
+uint16_t LeftEncoder=0;
+
+float KP=1,KI=0,KD=0,T=0.01;
+float Out=0,Out_old=0;
+float pid_error=0,pid_error_old=0,pid_error_old_old=0;
+
+int16_t AccData[3], GyroData[3], MagData[3];
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -58,12 +72,18 @@ static void MX_TIM2_Init(void);
 static void MX_TIM3_Init(void);
 static void MX_TIM8_Init(void);
 static void MX_USART3_UART_Init(void);
+static void MX_I2C1_Init(void);
+static void MX_TIM7_Init(void);
 /* USER CODE BEGIN PFP */
 
 /* USER CODE END PFP */
 
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
+int GETVAL(void){
+	 return SysTick->VAL;
+}
+
 void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
 {
 	if(huart->Instance==USART3)
@@ -86,26 +106,27 @@ void sys_init()
 
 void MotorControlSpeed(uint16_t SpeedMotorLeft,uint16_t SpeedMotorRight,uint8_t direct)
 {
+	globaldata=direct;
 	switch (direct) {
-		case 1:
+		case 0:
 			HAL_GPIO_WritePin(UPR_GPIO_Port, UPR_Pin, SET);
 			HAL_GPIO_WritePin(UPL_GPIO_Port, UPL_Pin, SET);
 			HAL_GPIO_WritePin(DOWNL_GPIO_Port, DOWNL_Pin, RESET);
 			HAL_GPIO_WritePin(DOWNR_GPIO_Port, DOWNR_Pin, RESET);
 			break;
-		case 2:
+		case 1:
 			HAL_GPIO_WritePin(UPR_GPIO_Port, UPR_Pin, RESET);
 			HAL_GPIO_WritePin(UPL_GPIO_Port, UPL_Pin, SET);
 			HAL_GPIO_WritePin(DOWNL_GPIO_Port, DOWNL_Pin, RESET);
 			HAL_GPIO_WritePin(DOWNR_GPIO_Port, DOWNR_Pin, SET);
 			break;
-		case 3:
+		case 2:
 			HAL_GPIO_WritePin(UPR_GPIO_Port, UPR_Pin, SET);
 			HAL_GPIO_WritePin(UPL_GPIO_Port, UPL_Pin, RESET);
 			HAL_GPIO_WritePin(DOWNL_GPIO_Port, DOWNL_Pin, SET);
 			HAL_GPIO_WritePin(DOWNR_GPIO_Port, DOWNR_Pin, RESET);
 			break;
-		case 4:
+		case 3:
 			HAL_GPIO_WritePin(UPR_GPIO_Port, UPR_Pin, RESET);
 			HAL_GPIO_WritePin(UPL_GPIO_Port, UPL_Pin, RESET);
 			HAL_GPIO_WritePin(DOWNL_GPIO_Port, DOWNL_Pin, SET);
@@ -114,9 +135,51 @@ void MotorControlSpeed(uint16_t SpeedMotorLeft,uint16_t SpeedMotorRight,uint8_t 
 		default:
 			break;
 	}
+	SpeedMotorLeft*=30;
+	SpeedMotorRight*=30;
 	htim8.Instance->CCR1=SpeedMotorLeft;
 	htim8.Instance->CCR4=SpeedMotorRight;
 }
+
+void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
+{
+	if(htim->Instance==TIM7)
+	{
+		HAL_GPIO_TogglePin(LEDR_GPIO_Port, LEDR_Pin);
+		RightEncoder=(TIM2->CNT)>>2;
+		LeftEncoder=(TIM3->CNT)>>2;
+	}
+}
+
+void Write_Flash(uint32_t FlashAddress,uint8_t data)
+{
+     HAL_FLASH_Unlock();
+     __HAL_FLASH_CLEAR_FLAG(FLASH_FLAG_EOP | FLASH_FLAG_OPERR | FLASH_FLAG_WRPERR | FLASH_FLAG_PGAERR | FLASH_FLAG_PGSERR );
+     FLASH_Erase_Sector(FLASH_SECTOR_11, VOLTAGE_RANGE_3);
+     HAL_FLASH_Program(TYPEPROGRAM_WORD, FlashAddress, data);
+     HAL_FLASH_Lock();
+}
+
+uint32_t Read_Flash(uint32_t FlashAddress)
+{
+	uint32_t Flash_data;
+	Flash_data=*(uint32_t*)FlashAddress;
+	return Flash_data;
+}
+
+void PIDmanual(int speedLeft,int speedRight)
+{
+	float P_part,I_part,D_part;
+	pid_error=speedRight - speedLeft;
+	P_part=KP*(pid_error - pid_error_old);
+	I_part=0.5*KI*T*(pid_error + pid_error_old);
+	D_part = KD/T*(pid_error - 2*pid_error_old+ pid_error_old_old);
+	Out = Out_old + P_part + I_part + D_part;
+	Out_old=Out;
+	pid_error_old=pid_error;
+	pid_error_old_old=pid_error_old;
+}
+
 /* USER CODE END 0 */
 
 /**
@@ -151,7 +214,14 @@ int main(void)
   MX_TIM3_Init();
   MX_TIM8_Init();
   MX_USART3_UART_Init();
+  MX_I2C1_Init();
+  MX_TIM7_Init();
   /* USER CODE BEGIN 2 */
+  HAL_TIM_PWM_Start(&htim8, TIM_CHANNEL_1);
+  HAL_TIM_PWM_Start(&htim8, TIM_CHANNEL_4);
+  HAL_TIM_Base_Start_IT(&htim7);
+  HAL_TIM_Encoder_Start(&htim2, TIM_CHANNEL_ALL);
+  HAL_TIM_Encoder_Start(&htim3, TIM_CHANNEL_ALL);
   HAL_UART_Receive_IT(&huart3, UARTgetchar, 1);
   /* USER CODE END 2 */
 
@@ -159,17 +229,15 @@ int main(void)
   /* USER CODE BEGIN WHILE */
   while (1)
   {
-	  HAL_TIM_PWM_Start(&htim8, TIM_CHANNEL_1);
-	  HAL_TIM_PWM_Start(&htim8, TIM_CHANNEL_4);
 	  if(newblockdata==1)
 	  {
 		  char SpeedLeftChar[4],SpeedRightChar[4],directChar[1];
-		  uint16_t SpeedLeft,SpeedRight,direct;
+		  uint8_t SpeedLeft,SpeedRight,direct;
 		  HAL_GPIO_TogglePin(LEDR_GPIO_Port, LEDR_Pin);
-		  for (int var = 0; var < 4; var++)
+		  for (int var = 0; var < maxblock; var++)
 		  {
 			  SpeedLeftChar[var]=UARTbuffer[var];
-			  SpeedRightChar[var]=UARTbuffer[var+4];
+			  SpeedRightChar[var]=UARTbuffer[var + maxblock];
 		  }
 		  directChar[0]=UARTbuffer[strlen(UARTbuffer)-1];
 		  SpeedLeft=atoi(SpeedLeftChar);
@@ -177,6 +245,7 @@ int main(void)
 		  direct=atoi(directChar);
 		  MotorControlSpeed(SpeedLeft, SpeedRight,direct);
 		  newblockdata=0;
+		  Write_Flash((uint32_t *)0x80E0000,SpeedLeft);
 	  }
     /* USER CODE END WHILE */
 
@@ -227,6 +296,40 @@ void SystemClock_Config(void)
   {
     Error_Handler();
   }
+}
+
+/**
+  * @brief I2C1 Initialization Function
+  * @param None
+  * @retval None
+  */
+static void MX_I2C1_Init(void)
+{
+
+  /* USER CODE BEGIN I2C1_Init 0 */
+
+  /* USER CODE END I2C1_Init 0 */
+
+  /* USER CODE BEGIN I2C1_Init 1 */
+
+  /* USER CODE END I2C1_Init 1 */
+  hi2c1.Instance = I2C1;
+  hi2c1.Init.ClockSpeed = 100000;
+  hi2c1.Init.DutyCycle = I2C_DUTYCYCLE_2;
+  hi2c1.Init.OwnAddress1 = 0;
+  hi2c1.Init.AddressingMode = I2C_ADDRESSINGMODE_7BIT;
+  hi2c1.Init.DualAddressMode = I2C_DUALADDRESS_DISABLE;
+  hi2c1.Init.OwnAddress2 = 0;
+  hi2c1.Init.GeneralCallMode = I2C_GENERALCALL_DISABLE;
+  hi2c1.Init.NoStretchMode = I2C_NOSTRETCH_DISABLE;
+  if (HAL_I2C_Init(&hi2c1) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  /* USER CODE BEGIN I2C1_Init 2 */
+
+  /* USER CODE END I2C1_Init 2 */
+
 }
 
 /**
@@ -324,6 +427,44 @@ static void MX_TIM3_Init(void)
   /* USER CODE BEGIN TIM3_Init 2 */
 
   /* USER CODE END TIM3_Init 2 */
+
+}
+
+/**
+  * @brief TIM7 Initialization Function
+  * @param None
+  * @retval None
+  */
+static void MX_TIM7_Init(void)
+{
+
+  /* USER CODE BEGIN TIM7_Init 0 */
+
+  /* USER CODE END TIM7_Init 0 */
+
+  TIM_MasterConfigTypeDef sMasterConfig = {0};
+
+  /* USER CODE BEGIN TIM7_Init 1 */
+
+  /* USER CODE END TIM7_Init 1 */
+  htim7.Instance = TIM7;
+  htim7.Init.Prescaler = 4199;
+  htim7.Init.CounterMode = TIM_COUNTERMODE_UP;
+  htim7.Init.Period = 199;
+  htim7.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_DISABLE;
+  if (HAL_TIM_Base_Init(&htim7) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  sMasterConfig.MasterOutputTrigger = TIM_TRGO_RESET;
+  sMasterConfig.MasterSlaveMode = TIM_MASTERSLAVEMODE_DISABLE;
+  if (HAL_TIMEx_MasterConfigSynchronization(&htim7, &sMasterConfig) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  /* USER CODE BEGIN TIM7_Init 2 */
+
+  /* USER CODE END TIM7_Init 2 */
 
 }
 

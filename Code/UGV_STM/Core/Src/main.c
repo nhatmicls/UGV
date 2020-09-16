@@ -47,6 +47,7 @@ TIM_HandleTypeDef htim2;
 TIM_HandleTypeDef htim3;
 TIM_HandleTypeDef htim7;
 TIM_HandleTypeDef htim8;
+TIM_HandleTypeDef htim12;
 
 UART_HandleTypeDef huart3;
 
@@ -58,11 +59,20 @@ uint32_t globaldata=0;
 uint16_t RightEncoder=0;
 uint16_t LeftEncoder=0;
 
-float KP=1,KI=0,KD=0,T=0.01;
-float Out=0,Out_old=0;
-float pid_error=0,pid_error_old=0,pid_error_old_old=0;
+float KP[3]={0,0,0},KI[3]={0,0,0},KD[3]={0,0,0},T=0.01;
+float Out[3]={0,0,0},Out_old[3]={0,0,0};
+float pid_error_old[3]={0,0,0},pid_error_old_old[3]={0,0,0};
 
 int16_t AccData[3], GyroData[3], MagData[3];
+
+enum state
+{
+	getPID = 0,
+	RUN,
+	HALT
+};
+
+uint8_t controlstate=HALT;
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -74,6 +84,7 @@ static void MX_TIM8_Init(void);
 static void MX_USART3_UART_Init(void);
 static void MX_I2C1_Init(void);
 static void MX_TIM7_Init(void);
+static void MX_TIM12_Init(void);
 /* USER CODE BEGIN PFP */
 
 /* USER CODE END PFP */
@@ -137,7 +148,7 @@ void MotorControlSpeed(uint16_t SpeedMotorLeft,uint16_t SpeedMotorRight,uint8_t 
 	}
 	SpeedMotorLeft*=30;
 	SpeedMotorRight*=30;
-	htim8.Instance->CCR1=SpeedMotorLeft;
+	htim12.Instance->CCR1=SpeedMotorLeft;
 	htim8.Instance->CCR4=SpeedMotorRight;
 }
 
@@ -167,19 +178,22 @@ uint32_t Read_Flash(uint32_t FlashAddress)
 	return Flash_data;
 }
 
-void PIDmanual(int speedLeft,int speedRight)
+void PIDmanual(uint8_t modePID,float pid_error)
 {
 	float P_part,I_part,D_part;
-	pid_error=speedRight - speedLeft;
-	P_part=KP*(pid_error - pid_error_old);
-	I_part=0.5*KI*T*(pid_error + pid_error_old);
-	D_part = KD/T*(pid_error - 2*pid_error_old+ pid_error_old_old);
-	Out = Out_old + P_part + I_part + D_part;
-	Out_old=Out;
-	pid_error_old=pid_error;
-	pid_error_old_old=pid_error_old;
+	P_part=KP[modePID] * (pid_error - pid_error_old[modePID]);
+	I_part=0.5 * KI[modePID] * T * (pid_error + pid_error_old[modePID]);
+	D_part = KD[modePID]/T *(pid_error - 2*pid_error_old[modePID] + pid_error_old_old[modePID]);
+	Out[modePID] = Out_old[modePID] + P_part + I_part + D_part;
+	Out_old[modePID] = Out[modePID];
+	pid_error_old[modePID] = pid_error;
+	pid_error_old_old[modePID] = pid_error_old[modePID];
 }
 
+void cacheall()
+{
+
+}
 /* USER CODE END 0 */
 
 /**
@@ -216,8 +230,9 @@ int main(void)
   MX_USART3_UART_Init();
   MX_I2C1_Init();
   MX_TIM7_Init();
+  MX_TIM12_Init();
   /* USER CODE BEGIN 2 */
-  HAL_TIM_PWM_Start(&htim8, TIM_CHANNEL_1);
+  HAL_TIM_PWM_Start(&htim12, TIM_CHANNEL_1);
   HAL_TIM_PWM_Start(&htim8, TIM_CHANNEL_4);
   HAL_TIM_Base_Start_IT(&htim7);
   HAL_TIM_Encoder_Start(&htim2, TIM_CHANNEL_ALL);
@@ -231,21 +246,32 @@ int main(void)
   {
 	  if(newblockdata==1)
 	  {
-		  char SpeedLeftChar[4],SpeedRightChar[4],directChar[1];
-		  uint8_t SpeedLeft,SpeedRight,direct;
-		  HAL_GPIO_TogglePin(LEDR_GPIO_Port, LEDR_Pin);
-		  for (int var = 0; var < maxblock; var++)
-		  {
-			  SpeedLeftChar[var]=UARTbuffer[var];
-			  SpeedRightChar[var]=UARTbuffer[var + maxblock];
-		  }
-		  directChar[0]=UARTbuffer[strlen(UARTbuffer)-1];
-		  SpeedLeft=atoi(SpeedLeftChar);
-		  SpeedRight=atoi(SpeedRightChar);
-		  direct=atoi(directChar);
-		  MotorControlSpeed(SpeedLeft, SpeedRight,direct);
+		  switch (controlstate) {
+			case getPID:
+
+				break;
+			case RUN:
+				char SpeedLeftChar[4],SpeedRightChar[4],directChar[1];
+				uint8_t SpeedLeft,SpeedRight,direct;
+				HAL_GPIO_TogglePin(LEDR_GPIO_Port, LEDR_Pin);
+				for (int var = 0; var < maxblock; var++)
+				{
+					SpeedLeftChar[var]=UARTbuffer[var];
+				    SpeedRightChar[var]=UARTbuffer[var + maxblock];
+				}
+				directChar[0]=UARTbuffer[strlen(UARTbuffer)-1];
+				SpeedLeft=atoi(SpeedLeftChar);
+				SpeedRight=atoi(SpeedRightChar);
+				direct=atoi(directChar);
+				MotorControlSpeed(SpeedLeft, SpeedRight,direct);
+				break;
+			case HALT:
+
+				break;
+			default:
+				break;
+		}
 		  newblockdata=0;
-		  Write_Flash((uint32_t *)0x80E0000,SpeedLeft);
 	  }
     /* USER CODE END WHILE */
 
@@ -507,14 +533,9 @@ static void MX_TIM8_Init(void)
   sConfigOC.OCMode = TIM_OCMODE_PWM1;
   sConfigOC.Pulse = 0;
   sConfigOC.OCPolarity = TIM_OCPOLARITY_HIGH;
-  sConfigOC.OCNPolarity = TIM_OCNPOLARITY_HIGH;
   sConfigOC.OCFastMode = TIM_OCFAST_DISABLE;
   sConfigOC.OCIdleState = TIM_OCIDLESTATE_RESET;
   sConfigOC.OCNIdleState = TIM_OCNIDLESTATE_RESET;
-  if (HAL_TIM_PWM_ConfigChannel(&htim8, &sConfigOC, TIM_CHANNEL_1) != HAL_OK)
-  {
-    Error_Handler();
-  }
   if (HAL_TIM_PWM_ConfigChannel(&htim8, &sConfigOC, TIM_CHANNEL_4) != HAL_OK)
   {
     Error_Handler();
@@ -534,6 +555,48 @@ static void MX_TIM8_Init(void)
 
   /* USER CODE END TIM8_Init 2 */
   HAL_TIM_MspPostInit(&htim8);
+
+}
+
+/**
+  * @brief TIM12 Initialization Function
+  * @param None
+  * @retval None
+  */
+static void MX_TIM12_Init(void)
+{
+
+  /* USER CODE BEGIN TIM12_Init 0 */
+
+  /* USER CODE END TIM12_Init 0 */
+
+  TIM_OC_InitTypeDef sConfigOC = {0};
+
+  /* USER CODE BEGIN TIM12_Init 1 */
+
+  /* USER CODE END TIM12_Init 1 */
+  htim12.Instance = TIM12;
+  htim12.Init.Prescaler = 0;
+  htim12.Init.CounterMode = TIM_COUNTERMODE_UP;
+  htim12.Init.Period = 3359;
+  htim12.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
+  htim12.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_DISABLE;
+  if (HAL_TIM_PWM_Init(&htim12) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  sConfigOC.OCMode = TIM_OCMODE_PWM1;
+  sConfigOC.Pulse = 0;
+  sConfigOC.OCPolarity = TIM_OCPOLARITY_HIGH;
+  sConfigOC.OCFastMode = TIM_OCFAST_DISABLE;
+  if (HAL_TIM_PWM_ConfigChannel(&htim12, &sConfigOC, TIM_CHANNEL_1) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  /* USER CODE BEGIN TIM12_Init 2 */
+
+  /* USER CODE END TIM12_Init 2 */
+  HAL_TIM_MspPostInit(&htim12);
 
 }
 
@@ -586,40 +649,33 @@ static void MX_GPIO_Init(void)
   __HAL_RCC_GPIOB_CLK_ENABLE();
 
   /*Configure GPIO pin Output Level */
-  HAL_GPIO_WritePin(GPIOC, LEDR_Pin|LEDG_Pin|DOWNR_Pin|UPR_Pin, GPIO_PIN_RESET);
+  HAL_GPIO_WritePin(GPIOC, LEDR_Pin|LEDG_Pin|UPL_Pin|DOWNR_Pin
+                          |UPR_Pin, GPIO_PIN_RESET);
 
   /*Configure GPIO pin Output Level */
-  HAL_GPIO_WritePin(LEDB_GPIO_Port, LEDB_Pin, GPIO_PIN_RESET);
-
-  /*Configure GPIO pin Output Level */
-  HAL_GPIO_WritePin(GPIOA, DOWNL_Pin|UPL_Pin, GPIO_PIN_RESET);
+  HAL_GPIO_WritePin(GPIOB, LEDB_Pin|DOWNL_Pin, GPIO_PIN_RESET);
 
   /*Configure GPIO pin : BTN_Pin */
   GPIO_InitStruct.Pin = BTN_Pin;
-  GPIO_InitStruct.Mode = GPIO_MODE_IT_RISING;
+  GPIO_InitStruct.Mode = GPIO_MODE_IT_FALLING;
   GPIO_InitStruct.Pull = GPIO_PULLUP;
   HAL_GPIO_Init(BTN_GPIO_Port, &GPIO_InitStruct);
 
-  /*Configure GPIO pins : LEDR_Pin LEDG_Pin DOWNR_Pin UPR_Pin */
-  GPIO_InitStruct.Pin = LEDR_Pin|LEDG_Pin|DOWNR_Pin|UPR_Pin;
+  /*Configure GPIO pins : LEDR_Pin LEDG_Pin UPL_Pin DOWNR_Pin
+                           UPR_Pin */
+  GPIO_InitStruct.Pin = LEDR_Pin|LEDG_Pin|UPL_Pin|DOWNR_Pin
+                          |UPR_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
   HAL_GPIO_Init(GPIOC, &GPIO_InitStruct);
 
-  /*Configure GPIO pin : LEDB_Pin */
-  GPIO_InitStruct.Pin = LEDB_Pin;
+  /*Configure GPIO pins : LEDB_Pin DOWNL_Pin */
+  GPIO_InitStruct.Pin = LEDB_Pin|DOWNL_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
-  HAL_GPIO_Init(LEDB_GPIO_Port, &GPIO_InitStruct);
-
-  /*Configure GPIO pins : DOWNL_Pin UPL_Pin */
-  GPIO_InitStruct.Pin = DOWNL_Pin|UPL_Pin;
-  GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
-  GPIO_InitStruct.Pull = GPIO_NOPULL;
-  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
-  HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
+  HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
 
   /* EXTI interrupt init*/
   HAL_NVIC_SetPriority(EXTI0_IRQn, 0, 0);

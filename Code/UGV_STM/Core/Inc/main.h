@@ -104,6 +104,10 @@ extern char UARTgetchar[1],UARTbuffer[20];
 extern uint8_t newblockdata;
 
 extern uint32_t globaldata;
+
+#define PID1 0x080E0000
+#define PID2 0x080E0003
+#define PID3 0x080E0006
 /* USER CODE END Private defines */
 
 #ifdef __cplusplus

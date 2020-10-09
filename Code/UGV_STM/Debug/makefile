@@ -63,8 +63,8 @@ UGV_STM.bin \
 all: UGV_STM.elf secondary-outputs
 
 # Tool invocations
-UGV_STM.elf: $(OBJS) $(USER_OBJS) D:\Project\UGV\Code\UGV_STM\STM32F405RGTX_FLASH.ld
-	arm-none-eabi-g++ -o "UGV_STM.elf" @"objects.list" $(USER_OBJS) $(LIBS) -mcpu=cortex-m4 -T"D:\Project\UGV\Code\UGV_STM\STM32F405RGTX_FLASH.ld" --specs=nosys.specs -Wl,-Map="UGV_STM.map" -Wl,--gc-sections -static --specs=nano.specs -mfpu=fpv4-sp-d16 -mfloat-abi=hard -mthumb -Wl,--start-group -lc -lm -lstdc++ -lsupc++ -Wl,--end-group
+UGV_STM.elf: $(OBJS) $(USER_OBJS) E:\Project\UGV\Code\UGV_STM\STM32F405RGTX_FLASH.ld
+	arm-none-eabi-g++ -o "UGV_STM.elf" @"objects.list" $(USER_OBJS) $(LIBS) -mcpu=cortex-m4 -T"E:\Project\UGV\Code\UGV_STM\STM32F405RGTX_FLASH.ld" --specs=nosys.specs -Wl,-Map="UGV_STM.map" -Wl,--gc-sections -static --specs=nano.specs -mfpu=fpv4-sp-d16 -mfloat-abi=hard -mthumb -Wl,--start-group -lc -lm -lstdc++ -lsupc++ -Wl,--end-group
 	@echo 'Finished building target: $@'
 	@echo ' '
 

@@ -83,18 +83,18 @@ void Error_Handler(void);
 #define ZIGBEE_TX_GPIO_Port GPIOB
 #define ZIGBEE_RX_Pin GPIO_PIN_11
 #define ZIGBEE_RX_GPIO_Port GPIOB
-#define MOTORR_Pin GPIO_PIN_6
-#define MOTORR_GPIO_Port GPIOC
+#define MOTORL_Pin GPIO_PIN_14
+#define MOTORL_GPIO_Port GPIOB
+#define DOWNL_Pin GPIO_PIN_15
+#define DOWNL_GPIO_Port GPIOB
+#define UPL_Pin GPIO_PIN_6
+#define UPL_GPIO_Port GPIOC
 #define DOWNR_Pin GPIO_PIN_7
 #define DOWNR_GPIO_Port GPIOC
 #define UPR_Pin GPIO_PIN_8
 #define UPR_GPIO_Port GPIOC
-#define MOTORL_Pin GPIO_PIN_9
-#define MOTORL_GPIO_Port GPIOC
-#define DOWNL_Pin GPIO_PIN_8
-#define DOWNL_GPIO_Port GPIOA
-#define UPL_Pin GPIO_PIN_9
-#define UPL_GPIO_Port GPIOA
+#define MOTORR_Pin GPIO_PIN_9
+#define MOTORR_GPIO_Port GPIOC
 #define MPU_SCL_Pin GPIO_PIN_8
 #define MPU_SCL_GPIO_Port GPIOB
 #define MPU_SDA_Pin GPIO_PIN_9
@@ -104,6 +104,10 @@ extern char UARTgetchar[1],UARTbuffer[20];
 extern uint8_t newblockdata;
 
 extern uint32_t globaldata;
+
+#define PID1 0x080E0000
+#define PID2 0x080E0003
+#define PID3 0x080E0006
 /* USER CODE END Private defines */
 
 #ifdef __cplusplus

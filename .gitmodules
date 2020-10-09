@@ -1,0 +1,3 @@
+[submodule "ManualControl"]
+	path = ManualControl
+	url = https://github.com/nhatmicls/ManualControl.git
